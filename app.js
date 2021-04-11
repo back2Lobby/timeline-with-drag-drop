@@ -1,3 +1,4 @@
+let schedular = document.getElementById("schedular")
 let matchAreas = document.querySelectorAll(".matchArea")
 let matches = document.querySelectorAll(".match .matchBody")
 let timeArea = document.querySelector(".timeArea");
@@ -33,7 +34,7 @@ resizers.forEach(resEl => {
     resEl.addEventListener("drag",(e)=>{
         //being dragged
         let match = e.target.parentElement;
-        let newWidth = e.screenX - match.getBoundingClientRect().left;
+        let newWidth = e.screenX - getScreenLeft(match);
         if(newWidth > 0){
             match.querySelector(".matchBody").style.width = newWidth + "px";
         }else{
@@ -47,7 +48,7 @@ resizers.forEach(resEl => {
         let matchEl = e.target.parentElement;
 
         let closestBreakPoint = window.allBreakPoints.reduce(function(prev,cur){
-            return (Math.abs(cur-e.target.getBoundingClientRect().left) < Math.abs(prev-e.target.getBoundingClientRect().left) ? cur : prev)
+            return (Math.abs(cur-getScreenLeft(e.target)) < Math.abs(prev-getScreenLeft(e.target)) ? cur : prev)
         })
 
         matchEl.dataset.matchLength = (getTimeInUnits(closestBreakPoint) - (+matchEl.dataset.startTime))/window.smallestZoomLevel;
@@ -117,10 +118,11 @@ function validateDragDrop(data){
 * left - the position where user dragged it
 */
 function setMatchTime(matchEl){
-    let matchPos = matchEl.getBoundingClientRect().left;
+    debugger;
+    let matchPos = getScreenLeft(matchEl);
     //check if it exactly matches a breakpoint
     let extaclySame = Array.from(document.querySelectorAll(".time")).filter((m)=>{
-        return m.getBoundingClientRect().left == matchPos;
+        return getScreenLeft(m) == matchPos;
     })
     if(extaclySame.length > 0){
         matchEl.dataset.startTime = extaclySame[0].dataset.time;
@@ -145,8 +147,8 @@ function getAllBreakPoints(){
     let allBreakPoints = [];
     let allBreakPointElements = document.querySelectorAll(".time");
     allBreakPointElements.forEach((timeEl,index) => {
-        // allBreakPoints.push(timeEl.getBoundingClientRect().x);
-        allBreakPoints = allBreakPoints.concat(getInRangeBreakPoints(timeEl.getBoundingClientRect().x,(allBreakPointElements[index+1] ? allBreakPointElements[index+1].getBoundingClientRect().x : undefined),breakPointsPerTime))
+        // allBreakPoints.push(getScreenLeft(timeEl));
+        allBreakPoints = allBreakPoints.concat(getInRangeBreakPoints(getScreenLeft(timeEl),(allBreakPointElements[index+1] ? getScreenLeft(allBreakPointElements[index+1]) : undefined),breakPointsPerTime))
     })
 
     //remove duplicates and undefined
@@ -283,6 +285,15 @@ function getAMPM(timeEl){
     return timeEl.parentElement.previousElementSibling.innerText == "AM" ? "AM" : "PM";
 }
 
+//get screen left to this element width getBoundingClientRect
+function getScreenLeft(target = null){
+    debugger;
+    if(target){
+        return target.getBoundingClientRect().left + schedular.scrollLeft;
+    }
+}
+
+
 function processWidth(matchEl,leftBreakPoint,rightBreakPoint){
         matchEl.querySelector(".matchBody").style.width = ((rightBreakPoint - leftBreakPoint)) + "px";
 }
@@ -303,8 +314,10 @@ function getInRangeBreakPoints(start,end,breakPoints = 1){
 }
 
 function updatePositionAndWidth(matches = null){
+    debugger;
     matches = matches ?? document.querySelectorAll(".match")
     matches.forEach(match => {
+        debugger;
         //because we will only position it with left side, on getting right side we will set width according to that side
             let leftBreakPoint = Math.floor(getBreakPointFromTime(+match.dataset.startTime));
             //find parent margin left used to make sure match does not go outside range
@@ -317,14 +330,15 @@ function updatePositionAndWidth(matches = null){
                 parentMarginLeft = 4;
             }
 
-            let targetBreakPoint = Number.isInteger(leftBreakPoint) ? leftBreakPoint : (match.parentElement.getBoundingClientRect().x + parentMarginLeft);
-            while(match.getBoundingClientRect().x !== targetBreakPoint){
+            let targetBreakPoint = Number.isInteger(leftBreakPoint) ? leftBreakPoint : (getScreenLeft(match.parentElement) + parentMarginLeft);
+            while(getScreenLeft(match) !== targetBreakPoint){
+                debugger;
                 //if it is not set then make it 0px by default
                 match.style.left = match.style.left == "" ? "0px": match.style.left;
 
                 let left = match.style.left.match(/\d+/);
                 if(left){
-                    if(match.getBoundingClientRect().x < targetBreakPoint){
+                    if(getScreenLeft(match) < targetBreakPoint){
                             match.style.left = ((+left[0])+1)+"px";
                     }else{
                         match.style.left = ((+left[0])-1)+"px";
